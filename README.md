@@ -7,6 +7,7 @@ This Discord bot monitors specified voice channels and sends notifications when 
 - 🔊 **Voice Channel Monitoring**: Get notified when users join, leave, or switch between specified voice channels
 - 📱 **Multiple Notification Methods**: Receive notifications via Discord DMs and [ntfy.sh](https://ntfy.sh/)
 - 🚫 **AFK Mode**: Automatically respond to users who join your voice channel while you're away
+- 🔔 **Return Notifications**: Automatically notifies users who joined while you were AFK when you return
 - ⚙️ **Customizable Settings**: Set custom AFK messages and notification channels
 
 ## Setup Instructions
@@ -104,6 +105,7 @@ The bot will automatically send notifications when:
 3. A user leaves a monitored voice channel
 
 Notifications will be sent to:
+
 - Your Discord DMs
 - Your ntfy topic (which you can receive on mobile)
 
@@ -138,6 +140,7 @@ This project is open source and available for anyone to use and modify.
 - 🔊 **음성 채널 모니터링**: 사용자가 지정된 음성 채널에 입장, 퇴장 또는 이동할 때 알림 받기
 - 📱 **다양한 알림 방법**: Discord DM과 [ntfy.sh](https://ntfy.sh/)를 통해 알림 받기
 - 🚫 **AFK 모드**: 자리를 비울 때 음성 채널에 입장하는 사용자에게 자동으로 응답
+- 🔔 **복귀 알람**: 자리를 비울 때 음성 채널에 입장하는 사용자에게 자동으로 응답
 - ⚙️ **맞춤 설정**: 사용자 정의 AFK 메시지 및 알림 채널 설정
 
 ## 설치 방법
@@ -235,6 +238,7 @@ node index.js
 3. 사용자가 모니터링 중인 음성 채널에서 퇴장할 때
 
 알림은 다음 경로로 전송됩니다:
+
 - Discord DM
 - ntfy 토픽 (모바일에서 수신 가능)
 
@@ -256,4 +260,4 @@ AFK 모드가 활성화되면, 봇은 지정된 텍스트 채널에 메시지를
 
 ## 라이센스
 
-이 프로젝트는 오픈 소스이며 누구나 사용하고 수정할 수 있습니다. 
+이 프로젝트는 오픈 소스이며 누구나 사용하고 수정할 수 있습니다.
