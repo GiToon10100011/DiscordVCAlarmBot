@@ -35,6 +35,7 @@ const NTFY_TOPIC = process.env.NTFY_TOPIC;
 let afkMode = false;
 let afkMessage = "I'm currently AFK. I'll be back soon!";
 let afkTextChannelId = process.env.NOTIFICATION_CHANNEL_ID;
+let usersJoinedDuringAfk = new Set(); // Track users who joined during AFK mode
 
 client.once("ready", async () => {
   console.log(`Logged in as ${client.user.tag}!`);
@@ -122,6 +123,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     } else if (action === "off") {
       afkMode = false;
+
+      // Notify users who joined during AFK mode that you're back
+      if (usersJoinedDuringAfk.size > 0 && afkTextChannelId) {
+        try {
+          const channel = await client.channels.fetch(afkTextChannelId);
+          if (channel) {
+            const userMentions = Array.from(usersJoinedDuringAfk)
+              .map((id) => `<@${id}>`)
+              .join(" ");
+            await channel.send(`${userMentions} I'm back now!`);
+          }
+        } catch (error) {
+          console.error("Error sending return message:", error);
+        }
+      }
+
+      // Clear the list of users
+      usersJoinedDuringAfk.clear();
+
       return interaction.reply({
         content:
           "AFK mode disabled. Only regular notifications will be active.",
@@ -170,6 +190,8 @@ async function sendAfkMessage(userId, channelName) {
     const channel = await client.channels.fetch(afkTextChannelId);
     if (!channel) return;
 
+    usersJoinedDuringAfk.add(userId);
+
     await channel.send(`<@${userId}> ${afkMessage} (Joined ${channelName})`);
   } catch (error) {
     console.error("Error sending AFK message:", error);
@@ -179,6 +201,41 @@ async function sendAfkMessage(userId, channelName) {
 client.on("voiceStateUpdate", (oldState, newState) => {
   const user = oldState.member?.user || newState.member?.user;
   if (!user) return;
+
+  // Check if this is YOU returning from being AFK
+  if (
+    user.id === YOUR_DISCORD_USER_ID && // This is you
+    afkMode && // AFK mode is active
+    oldState.channelId === null && // You were not in a voice channel before
+    newState.channelId !== null // You've joined a voice channel now
+  ) {
+    // You've returned while in AFK mode, so notify all users who joined during your absence
+    if (usersJoinedDuringAfk.size > 0 && afkTextChannelId) {
+      try {
+        const channel = client.channels.cache.get(afkTextChannelId);
+        if (channel) {
+          const userMentions = Array.from(usersJoinedDuringAfk)
+            .map((id) => `<@${id}>`)
+            .join(" ");
+          channel.send(`${userMentions} 다시 돌아옴 ㅋㅋ`);
+
+          // Turn off AFK mode and clear the list
+          afkMode = false;
+          usersJoinedDuringAfk.clear();
+
+          // Notify you that AFK mode was automatically disabled
+          const user = client.users.cache.get(YOUR_DISCORD_USER_ID);
+          if (user) {
+            user.send(
+              "AFK mode has been automatically disabled because you returned."
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error sending return message:", error);
+      }
+    }
+  }
 
   // Case 1: User joined one of our target VCs
   if (
