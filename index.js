@@ -1,67 +1,62 @@
 require("dotenv").config();
-const nodemailer = require("nodemailer");
 const {
   Client,
   GatewayIntentBits,
   Partials,
   EmbedBuilder,
 } = require("discord.js");
+const axios = require("axios");
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.DirectMessages, // Add this intent for DMs
+    GatewayIntentBits.DirectMessages,
   ],
-  partials: [Partials.Channel, Partials.Message], // Add Channel and Message partials for DMs
+  partials: [Partials.Channel, Partials.Message],
 });
 
-// Configuration - replace with your actual IDs
+// Discord configuration
 const TARGET_VOICE_CHANNELS = [
   process.env.TARGET_VOICE_CHANNEL1_ID,
   process.env.TARGET_VOICE_CHANNEL2_ID,
 ];
-const USER_ID_TO_DM = process.env.USER_ID_TO_DM; // Your Discord user ID here
+const YOUR_DISCORD_USER_ID = process.env.DISCORD_USER_ID;
 
-// Email configuration
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_APP_PASS,
-  },
-});
+// NTFY configuration (optional)
+const NTFY_TOPIC = process.env.NTFY_TOPIC;
 
 client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
 
-// Send email notification
-async function sendEmailNotification(subject, htmlBody) {
+// Send webhook notification (optional)
+async function sendWebhookNotification(title, message) {
   try {
-    await transporter.sendMail({
-      from: `"Discord Bot" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_TO,
-      subject: subject,
-      html: htmlBody,
+    // Put title in the first line of the message instead of using headers
+    const fullMessage = `${title}\n\n${message}`;
+    
+    await axios({
+      method: 'post',
+      url: `https://ntfy.sh/${NTFY_TOPIC}`,
+      data: fullMessage,
+      headers: {
+        'Content-Type': 'text/plain; charset=UTF-8'
+      }
     });
   } catch (error) {
-    console.error("Error sending email notification:", error);
+    console.error("Error sending ntfy notification:", error.message);
   }
 }
 
 // Send Discord DM
-async function sendDiscordDM(message) {
+async function sendDiscordDM(messageOptions) {
   try {
-    const user = await client.users.fetch(USER_ID_TO_DM);
-    if (!user) {
-      console.error("Could not find Discord user to DM");
-      return;
+    const user = await client.users.fetch(YOUR_DISCORD_USER_ID);
+    if (user) {
+      await user.send(messageOptions);
     }
-
-    await user.send(message);
-    console.log("Discord DM sent");
   } catch (error) {
     console.error("Error sending Discord DM:", error);
   }
@@ -85,20 +80,28 @@ client.on("voiceStateUpdate", (oldState, newState) => {
       timeStyle: "medium",
     });
 
-    // Send email
-    sendEmailNotification(
-      `🔊 ${user.username} joined ${channelName}`,
-      `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-        <h2 style="color: #3498db;">Voice Channel Join Alert</h2>
-        <p style="font-size: 16px;"><strong>${user.username}</strong> has joined the voice channel <strong>${channelName}</strong>!</p>
-        <p style="color: #666;">Time: ${time}</p>
-      </div>`
-    );
+    // Create embed
+    const embed = new EmbedBuilder()
+      .setColor(0x3498db)
+      .setTitle(`🔊 ${channelName}`)
+      .setDescription(`**${user.username}** has joined this voice channel!`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .addFields({
+        name: "Time",
+        value: time,
+        inline: true,
+      })
+      .setFooter({ text: "Voice Channel Monitor" })
+      .setTimestamp();
 
-    // Send Discord DM
-    sendDiscordDM(
-      `🔊 **${user.username}** has joined **${channelName}**!\nTime: ${time}`
-    );
+    // Send DM
+    sendDiscordDM({ embeds: [embed] });
+
+    // Send ntfy notification with message in the body
+    sendWebhookNotification(
+      `🔊 ${channelName}`,
+      `${user.username} has joined this voice channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
+    ).catch((error) => console.error(`Failed to send ntfy:`, error.message));
   }
 
   // Case 2: User switched between monitored VCs
@@ -119,20 +122,28 @@ client.on("voiceStateUpdate", (oldState, newState) => {
       timeStyle: "medium",
     });
 
-    // Send email
-    sendEmailNotification(
-      `🔄 ${user.username} switched to ${newChannelName}`,
-      `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-        <h2 style="color: #e67e22;">Voice Channel Switch Alert</h2>
-        <p style="font-size: 16px;"><strong>${user.username}</strong> switched from <strong>${oldChannelName}</strong> to <strong>${newChannelName}</strong>!</p>
-        <p style="color: #666;">Time: ${time}</p>
-      </div>`
-    );
+    const embed = new EmbedBuilder()
+      .setColor(0xe67e22)
+      .setTitle(`🔄 ${newChannelName}`)
+      .setDescription(
+        `**${user.username}** switched from **${oldChannelName}** to this channel!`
+      )
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .addFields({
+        name: "Time",
+        value: time,
+        inline: true,
+      })
+      .setFooter({ text: "Voice Channel Monitor" })
+      .setTimestamp();
 
-    // Send Discord DM
-    sendDiscordDM(
-      `🔄 **${user.username}** switched from **${oldChannelName}** to **${newChannelName}**!\nTime: ${time}`
-    );
+    sendDiscordDM({ embeds: [embed] });
+
+    // Send ntfy notification
+    sendWebhookNotification(
+      `🔄 ${newChannelName}`,
+      `${user.username} switched from ${oldChannelName} to this channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
+    ).catch((error) => console.error(`Failed to send ntfy:`, error.message));
   }
 
   // Case 3: User left a monitored VC
@@ -149,20 +160,26 @@ client.on("voiceStateUpdate", (oldState, newState) => {
       timeStyle: "medium",
     });
 
-    // Send email
-    sendEmailNotification(
-      `👋 ${user.username} left ${channelName}`,
-      `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-        <h2 style="color: #e74c3c;">Voice Channel Leave Alert</h2>
-        <p style="font-size: 16px;"><strong>${user.username}</strong> has left the voice channel <strong>${channelName}</strong>!</p>
-        <p style="color: #666;">Time: ${time}</p>
-      </div>`
-    );
+    const embed = new EmbedBuilder()
+      .setColor(0xe74c3c)
+      .setTitle(`👋 ${channelName}`)
+      .setDescription(`**${user.username}** has left this voice channel!`)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .addFields({
+        name: "Time",
+        value: time,
+        inline: true,
+      })
+      .setFooter({ text: "Voice Channel Monitor" })
+      .setTimestamp();
 
-    // Send Discord DM
-    sendDiscordDM(
-      `👋 **${user.username}** has left **${channelName}**!\nTime: ${time}`
-    );
+    sendDiscordDM({ embeds: [embed] });
+
+    // Send ntfy notification
+    sendWebhookNotification(
+      `👋 ${channelName}`,
+      `${user.username} has left this voice channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
+    ).catch((error) => console.error(`Failed to send ntfy:`, error.message));
   }
 });
 
