@@ -4,6 +4,10 @@ const {
   GatewayIntentBits,
   Partials,
   EmbedBuilder,
+  ApplicationCommandOptionType,
+  Events,
+  REST,
+  Routes,
 } = require("discord.js");
 const axios = require("axios");
 
@@ -24,26 +28,122 @@ const TARGET_VOICE_CHANNELS = [
 ];
 const YOUR_DISCORD_USER_ID = process.env.DISCORD_USER_ID;
 
-// NTFY configuration (optional)
+// NTFY configuration
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
 
-client.once("ready", () => {
+// AFK Configuration
+let afkMode = false;
+let afkMessage = "I'm currently AFK. I'll be back soon!";
+let afkTextChannelId = process.env.NOTIFICATION_CHANNEL_ID;
+
+client.once("ready", async () => {
   console.log(`Logged in as ${client.user.tag}!`);
+
+  // Register slash commands
+  const commands = [
+    {
+      name: "afk",
+      description: "Manage AFK mode",
+      options: [
+        {
+          name: "action",
+          description: "Turn AFK mode on or off",
+          type: ApplicationCommandOptionType.String,
+          required: true,
+          choices: [
+            { name: "On", value: "on" },
+            { name: "Off", value: "off" },
+          ],
+        },
+        {
+          name: "message",
+          description: "Custom AFK message",
+          type: ApplicationCommandOptionType.String,
+          required: false,
+        },
+        {
+          name: "channel",
+          description: "Channel to send AFK notifications to",
+          type: ApplicationCommandOptionType.Channel,
+          required: false,
+        },
+      ],
+    },
+  ];
+
+  try {
+    const rest = new REST({ version: "10" }).setToken(
+      process.env.DISCORD_TOKEN
+    );
+    await rest.put(Routes.applicationCommands(client.user.id), {
+      body: commands,
+    });
+    console.log("Slash commands registered");
+  } catch (error) {
+    console.error("Error registering slash commands:", error);
+  }
 });
 
-// Send webhook notification (optional)
+// Handle slash commands
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isCommand()) return;
+
+  if (interaction.commandName === "afk") {
+    // Only allow the specified user to use this command
+    if (interaction.user.id !== YOUR_DISCORD_USER_ID) {
+      return interaction.reply({
+        content: "Sorry, only the bot owner can use this command.",
+        ephemeral: true,
+      });
+    }
+
+    const action = interaction.options.getString("action");
+
+    if (action === "on") {
+      afkMode = true;
+
+      // Set custom message if provided
+      const customMessage = interaction.options.getString("message");
+      if (customMessage) {
+        afkMessage = customMessage;
+      }
+
+      // Set text channel if provided
+      const channel = interaction.options.getChannel("channel");
+      if (channel) {
+        afkTextChannelId = channel.id;
+      }
+
+      return interaction.reply({
+        content: `AFK mode enabled with message: "${afkMessage}" in ${
+          afkTextChannelId ? `<#${afkTextChannelId}>` : "no channel specified"
+        }`,
+        ephemeral: true,
+      });
+    } else if (action === "off") {
+      afkMode = false;
+      return interaction.reply({
+        content:
+          "AFK mode disabled. Only regular notifications will be active.",
+        ephemeral: true,
+      });
+    }
+  }
+});
+
+// Send webhook notification
 async function sendWebhookNotification(title, message) {
   try {
     // Put title in the first line of the message instead of using headers
     const fullMessage = `${title}\n\n${message}`;
-    
+
     await axios({
-      method: 'post',
+      method: "post",
       url: `https://ntfy.sh/${NTFY_TOPIC}`,
       data: fullMessage,
       headers: {
-        'Content-Type': 'text/plain; charset=UTF-8'
-      }
+        "Content-Type": "text/plain; charset=UTF-8",
+      },
     });
   } catch (error) {
     console.error("Error sending ntfy notification:", error.message);
@@ -59,6 +159,20 @@ async function sendDiscordDM(messageOptions) {
     }
   } catch (error) {
     console.error("Error sending Discord DM:", error);
+  }
+}
+
+// Send AFK message to channel
+async function sendAfkMessage(userId, channelName) {
+  try {
+    if (!afkTextChannelId) return;
+
+    const channel = await client.channels.fetch(afkTextChannelId);
+    if (!channel) return;
+
+    await channel.send(`<@${userId}> ${afkMessage} (Joined ${channelName})`);
+  } catch (error) {
+    console.error("Error sending AFK message:", error);
   }
 }
 
@@ -97,11 +211,19 @@ client.on("voiceStateUpdate", (oldState, newState) => {
     // Send DM
     sendDiscordDM({ embeds: [embed] });
 
-    // Send ntfy notification with message in the body
+    // Send ntfy notification
     sendWebhookNotification(
       `🔊 ${channelName}`,
       `${user.username} has joined this voice channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
     ).catch((error) => console.error(`Failed to send ntfy:`, error.message));
+
+    // Check if AFK mode is on and if the owner is in the VC the user joined
+    if (afkMode && newState.channel?.members.has(YOUR_DISCORD_USER_ID)) {
+      // Someone joined your VC while you're AFK
+      if (user.id !== YOUR_DISCORD_USER_ID) {
+        sendAfkMessage(user.id, channelName);
+      }
+    }
   }
 
   // Case 2: User switched between monitored VCs
@@ -144,6 +266,14 @@ client.on("voiceStateUpdate", (oldState, newState) => {
       `🔄 ${newChannelName}`,
       `${user.username} switched from ${oldChannelName} to this channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
     ).catch((error) => console.error(`Failed to send ntfy:`, error.message));
+
+    // Check if AFK mode is on and if the owner is in the VC the user switched to
+    if (afkMode && newState.channel?.members.has(YOUR_DISCORD_USER_ID)) {
+      // Someone switched to your VC while you're AFK
+      if (user.id !== YOUR_DISCORD_USER_ID) {
+        sendAfkMessage(user.id, newChannelName);
+      }
+    }
   }
 
   // Case 3: User left a monitored VC
