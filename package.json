@@ -1,0 +1,25 @@
+{
+  "name": "discordalarmbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GiToon10100011/DiscordVCAlarmBot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/GiToon10100011/DiscordVCAlarmBot/issues"
+  },
+  "homepage": "https://github.com/GiToon10100011/DiscordVCAlarmBot#readme",
+  "dependencies": {
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.5.0"
+  }
+}
