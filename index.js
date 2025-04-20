@@ -33,7 +33,8 @@ client.on("voiceStateUpdate", (oldState, newState) => {
   );
   if (!notificationChannel) return;
 
-  const user = newState.member.user;
+  const user = oldState.member?.user || newState.member?.user;
+  if (!user) return;
 
   // Case 1: User joined one of our target VCs from outside (not from another target VC)
   if (
@@ -79,6 +80,31 @@ client.on("voiceStateUpdate", (oldState, newState) => {
       .setDescription(
         `**${user.username}** switched from **${oldChannelName}** to this channel!`
       )
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+      .addFields({
+        name: "Time",
+        value: `${new Date().toLocaleTimeString()}`,
+        inline: true,
+      })
+      .setFooter({ text: "Voice Channel Monitor" })
+      .setTimestamp();
+
+    notificationChannel.send({ embeds: [embed] });
+  }
+
+  // Case 3: User disconnected from one of our target VCs
+  else if (
+    TARGET_VOICE_CHANNELS.includes(oldState.channelId) &&
+    !TARGET_VOICE_CHANNELS.includes(newState.channelId)
+  ) {
+    const channelName = oldState.channel
+      ? oldState.channel.name
+      : "unknown channel";
+
+    const embed = new EmbedBuilder()
+      .setColor(0xe74c3c)
+      .setTitle(`👋 ${channelName}`)
+      .setDescription(`**${user.username}** has left this voice channel!`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
       .addFields({
         name: "Time",
