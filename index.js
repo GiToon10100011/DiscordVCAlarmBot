@@ -70,6 +70,10 @@ client.once("ready", async () => {
         },
       ],
     },
+    {
+      name: "status",
+      description: "Display current bot settings and status",
+    },
   ];
 
   try {
@@ -145,6 +149,103 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({
         content:
           "AFK mode disabled. Only regular notifications will be active.",
+        ephemeral: true,
+      });
+    }
+  } else if (interaction.commandName === "status") {
+    // Only allow the specified user to use this command
+    if (interaction.user.id !== YOUR_DISCORD_USER_ID) {
+      return interaction.reply({
+        content: "Sorry, only the bot owner can use this command.",
+        ephemeral: true,
+      });
+    }
+
+    try {
+      // Get monitored channels
+      const monitoredChannels = [];
+      for (const channelId of TARGET_VOICE_CHANNELS) {
+        if (channelId) {
+          try {
+            const channel = await client.channels.fetch(channelId);
+            if (channel) {
+              monitoredChannels.push(`${channel.name} (${channelId})`);
+            } else {
+              monitoredChannels.push(`Unknown (${channelId})`);
+            }
+          } catch (err) {
+            monitoredChannels.push(`Error fetching channel (${channelId})`);
+          }
+        }
+      }
+
+      // Get notification channel info
+      let notificationChannelName = "Not set";
+      if (afkTextChannelId) {
+        try {
+          const channel = await client.channels.fetch(afkTextChannelId);
+          if (channel) {
+            notificationChannelName = `#${channel.name} (${afkTextChannelId})`;
+          } else {
+            notificationChannelName = `Unknown (${afkTextChannelId})`;
+          }
+        } catch (err) {
+          notificationChannelName = `Error fetching channel (${afkTextChannelId})`;
+        }
+      }
+
+      // Get users who joined during AFK
+      const afkUsers =
+        Array.from(usersJoinedDuringAfk)
+          .map((id) => `<@${id}>`)
+          .join(", ") || "None";
+
+      // Create status embed
+      const embed = new EmbedBuilder()
+        .setColor(afkMode ? 0x57f287 : 0xe74c3c)
+        .setTitle("📊 Voice Channel Monitor Status")
+        .addFields(
+          {
+            name: "AFK Mode",
+            value: afkMode ? "✅ Enabled" : "❌ Disabled",
+            inline: true,
+          },
+          {
+            name: "Notification Channel",
+            value: notificationChannelName,
+            inline: true,
+          },
+          {
+            name: "AFK Message",
+            value: afkMessage || "Not set",
+            inline: false,
+          },
+          {
+            name: "Monitored Voice Channels",
+            value: monitoredChannels.join("\n") || "None",
+            inline: false,
+          }
+        )
+        .setFooter({ text: "Voice Channel Monitor" })
+        .setTimestamp();
+
+      // Add users who joined during AFK if any
+      if (afkMode && usersJoinedDuringAfk.size > 0) {
+        embed.addFields({
+          name: "Users Joined During AFK",
+          value: afkUsers,
+          inline: false,
+        });
+      }
+
+      return interaction.reply({
+        embeds: [embed],
+        ephemeral: true,
+      });
+    } catch (error) {
+      console.error("Error displaying status:", error);
+      return interaction.reply({
+        content: `Error displaying status: ${error.message}`,
         ephemeral: true,
       });
     }

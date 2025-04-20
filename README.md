@@ -8,6 +8,7 @@ This Discord bot monitors specified voice channels and sends notifications when 
 - 📱 **Multiple Notification Methods**: Receive notifications via Discord DMs and [ntfy.sh](https://ntfy.sh/)
 - 🚫 **AFK Mode**: Automatically respond to users who join your voice channel while you're away
 - 🔔 **Return Notifications**: Automatically notifies users who joined while you were AFK when you return
+- 📊 **Status Command**: Check current bot settings including AFK status, notification channels, and active users
 - ⚙️ **Customizable Settings**: Set custom AFK messages and notification channels
 
 ## Setup Instructions
@@ -111,6 +112,16 @@ Notifications will be sent to:
 
 When AFK mode is enabled, the bot will also send a message in the specified text channel to notify users who join your voice channel that you're away.
 
+### Status Command
+
+Use the `/status` command to check the current bot configuration:
+
+- Shows whether AFK mode is enabled or disabled
+- Displays the current notification channel
+- Shows your current AFK message
+- Lists all monitored voice channels
+- When AFK mode is active, shows users who joined during your absence
+
 ## Customization
 
 You can modify the following aspects of the bot:
@@ -140,7 +151,8 @@ This project is open source and available for anyone to use and modify.
 - 🔊 **음성 채널 모니터링**: 사용자가 지정된 음성 채널에 입장, 퇴장 또는 이동할 때 알림 받기
 - 📱 **다양한 알림 방법**: Discord DM과 [ntfy.sh](https://ntfy.sh/)를 통해 알림 받기
 - 🚫 **AFK 모드**: 자리를 비울 때 음성 채널에 입장하는 사용자에게 자동으로 응답
-- 🔔 **복귀 알람**: 자리를 비울 때 음성 채널에 입장하는 사용자에게 자동으로 응답
+- 🔔 **복귀 알림**: AFK 상태에서 돌아왔을 때 그동안 입장한 사용자들에게 자동으로 알림
+- 📊 **상태 확인 명령어**: AFK 상태, 알림 채널, 활성 사용자 등 현재 봇 설정 확인
 - ⚙️ **맞춤 설정**: 사용자 정의 AFK 메시지 및 알림 채널 설정
 
 ## 설치 방법
@@ -174,14 +186,14 @@ This project is open source and available for anyone to use and modify.
    - 음성 연결
 4. 생성된 URL을 복사하여 브라우저에서 열어 봇을 서버에 초대
 
-### 3단계: 프로젝트 설정
+### Step 3: Set Up the Project
 
-1. 이 저장소를 클론하거나 다운로드
-2. 의존성 설치:
+1. Clone or download this repository
+2. Install dependencies:
    ```bash
    npm install
    ```
-3. 프로젝트 루트에 다음 변수가 포함된 `.env` 파일 생성:
+3. Create a `.env` file in the project root with the following variables:
 
 ```
 # Discord 설정
@@ -196,68 +208,78 @@ NOTIFICATION_CHANNEL_ID=AFK_알림용_채널_ID
 NTFY_TOPIC=당신의_NTFY_토픽_이름
 ```
 
-### 4단계: 필요한 ID 가져오기
+### Step 4: Get the Required IDs
 
-필요한 ID를 찾는 방법:
+To find the IDs you need:
 
 1. Discord에서 개발자 모드 활성화 (사용자 설정 > 고급 > 개발자 모드)
 2. 음성 채널을 우클릭하고 "ID 복사"를 선택하여 음성 채널 ID 가져오기
 3. 사용자 이름을 우클릭하고 "ID 복사"를 선택하여 사용자 ID 가져오기
 4. 텍스트 채널을 우클릭하고 "ID 복사"를 선택하여 알림 채널 ID 가져오기
 
-### 5단계: NTFY 설정
+### Step 5: Set Up NTFY
 
 1. 알림을 위한 고유한 토픽 이름 선택
 2. 이 토픽 이름을 `.env` 파일에 `NTFY_TOPIC`으로 추가
 3. 모바일 기기에 [ntfy 앱](https://ntfy.sh/app) 설치
 4. 앱에서 토픽 구독
 
-### 6단계: 봇 실행
+### Step 6: Run the Bot
 
 ```bash
 node index.js
 ```
 
-## 사용 방법
+## Usage
 
-### AFK 모드
+### AFK Mode
 
-`/afk` 명령어를 사용하여 AFK 모드 관리:
+Use the `/afk` command to manage AFK mode:
 
 - `/afk action:on` - 기본 메시지로 AFK 모드 활성화
 - `/afk action:on message:사용자 정의 메시지` - 사용자 정의 메시지로 AFK 모드 활성화
 - `/afk action:on channel:#채널-이름` - AFK 모드 활성화 및 특정 알림 채널 설정
 - `/afk action:off` - AFK 모드 비활성화
 
-### 알림
+### Notifications
 
-봇은 다음 상황에서 자동으로 알림을 보냅니다:
+The bot will automatically send notifications when:
 
-1. 사용자가 모니터링 중인 음성 채널에 입장할 때
-2. 사용자가 모니터링 중인 음성 채널 간에 이동할 때
-3. 사용자가 모니터링 중인 음성 채널에서 퇴장할 때
+1. A user joins one of the monitored voice channels
+2. A user switches between monitored voice channels
+3. A user leaves a monitored voice channel
 
-알림은 다음 경로로 전송됩니다:
+Notifications will be sent to:
 
-- Discord DM
-- ntfy 토픽 (모바일에서 수신 가능)
+- Your Discord DMs
+- Your ntfy topic (which you can receive on mobile)
 
-AFK 모드가 활성화되면, 봇은 지정된 텍스트 채널에 메시지를 보내 음성 채널에 입장한 사용자에게 자리를 비웠음을 알립니다.
+When AFK mode is enabled, the bot will also send a message in the specified text channel to notify users who join your voice channel that you're away.
 
-## 커스터마이징
+### Status Command
 
-다음과 같은 봇의 측면을 수정할 수 있습니다:
+Use the `/status` command to check the current bot configuration:
 
-- `.env` 파일에 추가하여 모니터링할 음성 채널 추가
-- 코드에서 임베드 생성을 편집하여 알림 형식 변경
-- `/afk` 명령어를 사용하여 AFK 메시지 사용자 정의
+- Shows whether AFK mode is enabled or disabled
+- Displays the current notification channel
+- Shows your current AFK message
+- Lists all monitored voice channels
+- When AFK mode is active, shows users who joined during your absence
 
-## 문제 해결
+## Customization
 
-- 봇이 명령에 응답하지 않는 경우, Discord 개발자 포털에서 올바른 인텐트를 활성화했는지 확인
-- 알림을 받지 못하는 경우, `.env` 파일에 사용자 ID가 올바르게 설정되어 있는지 확인
-- ntfy 문제의 경우, 토픽 이름을 확인하고 앱에서 해당 토픽을 구독했는지 확인
+You can modify the following aspects of the bot:
 
-## 라이센스
+- Add more voice channels to monitor by adding them to the `.env` file
+- Change the notification format by editing the embed creation in the code
+- Customize the AFK message using the `/afk` command
 
-이 프로젝트는 오픈 소스이며 누구나 사용하고 수정할 수 있습니다.
+## Troubleshooting
+
+- If the bot doesn't respond to commands, make sure you've enabled the correct intents in the Discord Developer Portal
+- If you're not receiving notifications, check that your user ID is correctly set in the `.env` file
+- For ntfy issues, verify your topic name and check that you're subscribed to it in the app
+
+## License
+
+This project is open source and available for anyone to use and modify.
