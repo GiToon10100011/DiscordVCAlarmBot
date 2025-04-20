@@ -303,6 +303,12 @@ client.on("voiceStateUpdate", (oldState, newState) => {
   const user = oldState.member?.user || newState.member?.user;
   if (!user) return;
 
+  // Get the member's display name (nickname if set, otherwise username)
+  const displayName =
+    oldState.member?.displayName ||
+    newState.member?.displayName ||
+    user.username;
+
   // Check if this is YOU returning from being AFK
   if (
     user.id === YOUR_DISCORD_USER_ID && // This is you
@@ -356,7 +362,7 @@ client.on("voiceStateUpdate", (oldState, newState) => {
     const embed = new EmbedBuilder()
       .setColor(0x3498db)
       .setTitle(`🔊 ${channelName}`)
-      .setDescription(`**${user.username}** has joined this voice channel!`)
+      .setDescription(`**${displayName}** has joined this voice channel!`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
       .addFields({
         name: "Time",
@@ -369,10 +375,10 @@ client.on("voiceStateUpdate", (oldState, newState) => {
     // Send DM
     sendDiscordDM({ embeds: [embed] });
 
-    // Send ntfy notification
+    // Send ntfy notification with display name instead of username
     sendWebhookNotification(
       `🔊 ${channelName}`,
-      `${user.username} has joined this voice channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
+      `${displayName} has joined this voice channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
     ).catch((error) => console.error(`Failed to send ntfy:`, error.message));
 
     // Check if AFK mode is on and if the owner is in the VC the user joined
@@ -406,7 +412,7 @@ client.on("voiceStateUpdate", (oldState, newState) => {
       .setColor(0xe67e22)
       .setTitle(`🔄 ${newChannelName}`)
       .setDescription(
-        `**${user.username}** switched from **${oldChannelName}** to this channel!`
+        `**${displayName}** switched from **${oldChannelName}** to this channel!`
       )
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
       .addFields({
@@ -419,10 +425,10 @@ client.on("voiceStateUpdate", (oldState, newState) => {
 
     sendDiscordDM({ embeds: [embed] });
 
-    // Send ntfy notification
+    // Send ntfy notification with display name
     sendWebhookNotification(
       `🔄 ${newChannelName}`,
-      `${user.username} switched from ${oldChannelName} to this channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
+      `${displayName} switched from ${oldChannelName} to this channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
     ).catch((error) => console.error(`Failed to send ntfy:`, error.message));
 
     // Check if AFK mode is on and if the owner is in the VC the user switched to
@@ -451,7 +457,7 @@ client.on("voiceStateUpdate", (oldState, newState) => {
     const embed = new EmbedBuilder()
       .setColor(0xe74c3c)
       .setTitle(`👋 ${channelName}`)
-      .setDescription(`**${user.username}** has left this voice channel!`)
+      .setDescription(`**${displayName}** has left this voice channel!`)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
       .addFields({
         name: "Time",
@@ -463,10 +469,10 @@ client.on("voiceStateUpdate", (oldState, newState) => {
 
     sendDiscordDM({ embeds: [embed] });
 
-    // Send ntfy notification
+    // Send ntfy notification with display name
     sendWebhookNotification(
       `👋 ${channelName}`,
-      `${user.username} has left this voice channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
+      `${displayName} has left this voice channel!\n\nTime: ${time}\n\nVoice Channel Monitor`
     ).catch((error) => console.error(`Failed to send ntfy:`, error.message));
   }
 });
